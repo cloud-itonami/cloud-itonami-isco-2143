@@ -71,7 +71,7 @@ backend without touching actor or governor.
 ## Tests
 
 ```bash
-clj -M:test
+kbb -M:test
 ```
 
 - `governor_test.clj`: hard violations, escalation rules, store ops
