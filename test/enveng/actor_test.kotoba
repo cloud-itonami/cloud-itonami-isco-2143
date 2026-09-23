@@ -51,3 +51,25 @@
         _ (actor/run-request! g req-ok {} "thread-5")
         _ (actor/run-request! g req-hard {} "thread-6")]
     (is (>= (count (store/ledger st)) 2))))
+
+(deftest end-to-end-hold-on-op-outside-the-catalog
+  ;; The mock advisor passes the request's op through, as an LLM would pass
+  ;; through whatever it wrote. Before enveng.operations this run committed an
+  ;; :approve-remediation-closure record.
+  (let [st (fresh-store)
+        g (actor/build-graph {:store st :advisor (advisor/mock-advisor)})
+        result (actor/run-request! g {:project-id "site-1" :op :approve-remediation-closure :stake :low}
+                                   {} "thread-7")]
+    (is (= :done (:status result)))
+    (is (empty? (store/records-of st "site-1")))
+    (is (= :hold (:disposition (last (store/ledger st)))))
+    (is (= [:unknown-op]
+           (mapv :rule (:violations (:verdict (last (store/ledger st)))))))))
+
+(deftest end-to-end-commit-on-client-review
+  (let [st (fresh-store)
+        g (actor/build-graph {:store st :advisor (advisor/mock-advisor)})
+        result (actor/run-request! g {:project-id "site-1" :op :request-client-review :stake :low}
+                                   {} "thread-8")]
+    (is (= :done (:status result)))
+    (is (= [:request-client-review] (mapv :op (store/records-of st "site-1"))))))

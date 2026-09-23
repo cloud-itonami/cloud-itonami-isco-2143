@@ -1,7 +1,8 @@
 (ns enveng.governor-test
   (:require [clojure.test :refer [deftest is testing]]
             [enveng.store :as store]
-            [enveng.governor :as governor]))
+            [enveng.governor :as governor]
+            [enveng.operations :as operations]))
 
 (defn- fresh-store []
   (let [st (store/mem-store)]
@@ -72,3 +73,51 @@
     (store/append-ledger! st {:disposition :commit})
     (is (= 1 (count (store/records-of st "site-1"))))
     (is (= 1 (count (store/ledger st))))))
+
+(deftest hard-on-op-outside-the-catalog
+  ;; A registered site, :propose effect, high confidence: every rule the
+  ;; governor had before enveng.operations is satisfied, and this verdict was
+  ;; {:ok? true}.
+  (let [v (governor/check {:project-id "site-1"} {}
+                          {:op :approve-remediation-closure :effect :propose :confidence 0.9 :stake :low}
+                          (fresh-store))]
+    (is (:hard? v))
+    (is (not (:ok? v)))
+    (is (not (:escalate? v)))
+    (is (= [:unknown-op] (mapv :rule (:violations v))))))
+
+(deftest hard-on-unreadable-llm-reply
+  ;; advisor/parse-proposal's fallback. Escalating it would ask a human to
+  ;; approve a record whose :op is :unknown.
+  (let [v (governor/check {:project-id "site-1"} {}
+                          {:op :unknown :effect :propose :confidence 0.0 :stake :high
+                           :rationale "LLM response parse failure"}
+                          (fresh-store))]
+    (is (:hard? v))
+    (is (not (:escalate? v)))
+    (is (some #(= :unknown-op (:rule %)) (:violations v)))))
+
+(deftest every-permitted-op-passes-the-hard-rules
+  ;; The catalog and the governor must agree: an op the catalog permits is
+  ;; never hard-blocked for being unknown.
+  (let [st (fresh-store)]
+    (doseq [op (keys operations/permitted)]
+      (let [v (governor/check {:project-id "site-1"} {}
+                              {:op op :effect :propose :confidence 0.9 :stake :low} st)]
+        (is (not (:hard? v)) (str op " was hard-blocked"))))))
+
+(deftest forbidden-ops-are-not-reported-as-unknown
+  ;; The sign-off ops are refused for the reason they exist, not as typos.
+  (let [st (fresh-store)]
+    (doseq [op operations/forbidden]
+      (let [v (governor/check {:project-id "site-1"} {}
+                              {:op op :effect :propose :confidence 0.9 :stake :high} st)]
+        (is (= [:no-certification] (mapv :rule (:violations v))) (str op))))))
+
+(deftest catalog-is-the-advisors-documented-vocabulary
+  ;; enveng.advisor's docstring and README's Scope name these four ops. An op
+  ;; dropped from the catalog would otherwise just start holding, and nothing
+  ;; above fails.
+  (is (= #{:draft-remediation-plan :log-site-data
+           :flag-regulatory-risk :request-client-review}
+         (set (keys operations/permitted)))))

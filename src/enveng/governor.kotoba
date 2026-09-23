@@ -22,13 +22,17 @@
        engineering design or compliance certification is a permanent
        block (that is the licensed environmental engineer's exclusive
        professional responsibility).
+    4. closed vocabulary   — an `:op` that `enveng.operations` neither
+       permits nor forbids is refused (`:unknown-op`), including the `:unknown`
+       the advisor emits for an unreadable LLM reply.
   ESCALATION invariants (:escalate? true, ALWAYS human sign-off, per the
   README robotics-premise: certified designs and compliance certification
   always require human engineer sign-off):
-    4. :op :flag-regulatory-risk (always escalates).
-    5. remediation plans touching hazardous-material handling.
-    6. low confidence (< `confidence-floor`)."
-  (:require [enveng.store :as store]))
+    5. :op :flag-regulatory-risk (always escalates).
+    6. remediation plans touching hazardous-material handling.
+    7. low confidence (< `confidence-floor`)."
+  (:require [enveng.store :as store]
+            [enveng.operations :as operations]))
 
 (def confidence-floor 0.6)
 (def ^:private escalating-ops #{:flag-regulatory-risk})
@@ -42,9 +46,11 @@
     (not= :propose (:effect proposal))
     (conj {:rule :no-actuation :detail "effect は :propose のみ許可（直接書込禁止）"})
 
-    (or (= :issue-certified-design (:op proposal))
-        (= :certify-compliance (:op proposal)))
-    (conj {:rule :no-certification :detail "certified engineering designs and compliance certification are licensed engineer's exclusive responsibility"})))
+    (operations/forbidden? (:op proposal))
+    (conj {:rule :no-certification :detail "certified engineering designs and compliance certification are licensed engineer's exclusive responsibility"})
+
+    (operations/unknown? (:op proposal))
+    (conj {:rule :unknown-op :detail (str "op " (pr-str (:op proposal)) " is not in enveng.operations")})))
 
 (defn- hazmat-handling? [{:keys [scope tags]}]
   (and scope tags (some hazmat-keywords tags)))
