@@ -32,6 +32,7 @@ The `EnvengGovernor` is an independent system that gates all proposals:
 1. **Project provenance**: request's project must be registered
 2. **No actuation**: effect must be `:propose` (never `:direct-write` or similar)
 3. **No certification**: any attempt to issue certified design or certify compliance
+4. **Closed vocabulary**: an `:op` that `enveng.operations` neither permits nor forbids (`:unknown-op`) — including the `:unknown` an unreadable LLM reply becomes
 
 ### Escalation Rules (always human sign-off, `:request-approval`)
 1. **`:flag-regulatory-risk` operation**: always escalates
@@ -50,6 +51,7 @@ Proposals that pass all checks proceed to `:commit` without interruption.
 ```
 
 - **`:advise`**: `Advisor` protocol generates a proposal. Default is `mock-advisor`; swap for `llm-advisor` wrapping a `langchain.model/ChatModel`.
+- **`enveng.operations`**: the closed vocabulary of ops — the four in Scope are `permitted`, the two sign-off ops are `forbidden`. An op in neither set is refused.
 - **`:govern`**: `Governor/check` evaluates the proposal against hard/escalation rules.
 - **`:decide`**: Routes on the verdict.
 - **`:commit`** (or resume after approval): Writes record to store, appends ledger.
@@ -71,11 +73,22 @@ backend without touching actor or governor.
 ## Tests
 
 ```bash
-kbb -M:test
+kbb --backend sci test/run_suite.cljk
 ```
 
-- `governor_test.clj`: hard violations, escalation rules, store ops
-- `actor_test.clj`: graph flow, interrupt/resume, ledger behavior
+The suite is **21 tests / 49 assertions**. `test/run_suite.cljk` reads that
+sentence and refuses (exit 2) any run that comes in under it. `kbb -M:test`
+does not run this suite: the sources are `.kotoba`, which the test runner does
+not collect.
+
+- `governor_test.kotoba`: hard violations, escalation rules, the operations catalog, store ops
+- `actor_test.kotoba`: graph flow, interrupt/resume, ledger behavior
+
+Before `enveng.operations` (2026-09-23) the governor accepted any op it had not
+heard of: `{:op :approve-remediation-closure :effect :propose :confidence 0.9}`
+for a registered site was `:ok? true` and committed a project record.
+`hard-on-op-outside-the-catalog` and `end-to-end-hold-on-op-outside-the-catalog`
+pin the refusal.
 
 ## Dependencies
 

@@ -1,0 +1,43 @@
+(ns enveng.operations
+  "The closed vocabulary of environmental engineering operations this actor
+  may propose.
+
+  Before this catalog the governor judged a proposal by its project, its
+  `:effect` and a deny-list of two ops — and accepted every other `:op` it had
+  never heard of. The advisor is swappable and `llm-advisor` passes through
+  whatever `:op` the model wrote, so `{:op :approve-remediation-closure :effect
+  :propose :confidence 0.9}` for a registered site came back `:ok? true` and
+  was committed as a project record. A deny-list only refuses what somebody
+  thought of; this is the allow-list the governor now checks against.
+
+  Three kinds of op:
+    permitted  — may be proposed; the governor still applies its other rules.
+    forbidden  — named, and always a hard `:no-certification` block: the
+                 licensed environmental engineer's exclusive professional
+                 responsibility.
+    anything else — unknown, and a hard `:unknown-op` block. That includes
+                 `:unknown`, which `advisor/parse-proposal` emits when the
+                 model's reply could not be read: there is no proposal to
+                 approve, so it holds rather than asking a human to sign off
+                 on nothing.")
+
+(def permitted
+  "Ops the advisor may propose, with what each one produces."
+  {:draft-remediation-plan "a remediation / pollution-control plan draft for the engineer's review"
+   :log-site-data          "a site assessment data log entry"
+   :flag-regulatory-risk   "a regulatory compliance risk for the engineer to review (always escalates)"
+   :request-client-review  "a proposed client / regulator review session"})
+
+(def forbidden
+  "Ops that name the licensed environmental engineer's professional sign-off.
+  Never permitted, never escalatable."
+  #{:issue-certified-design :certify-compliance})
+
+(defn permitted? [op] (contains? permitted op))
+
+(defn forbidden? [op] (contains? forbidden op))
+
+(defn unknown?
+  "True for an op that is neither permitted nor forbidden."
+  [op]
+  (not (or (permitted? op) (forbidden? op))))
