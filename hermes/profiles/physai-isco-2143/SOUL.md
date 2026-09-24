@@ -16,7 +16,7 @@ README: ISCO 2143 環境技術者のサイト評価データと環境工学プ�
 | `:extraction-well-pumping` | pipe-flow | 揚水ポンプが地下水を 15 m 揚げ、内径 50 mm・200 m の配管で処理設備へ送る | ポンプ軸動力 | 750 W（estimate） |
 
 測定の入口: `kbb -M:physics`。全 run が数値を返さなければ exit 2 = **測れなかった**（「異常なし」ではない）。
-test: `kbb -M:physai-test`（`test/enveng/physics_spec_test.cljk` が physics.edn の妥当性と全 run の計測を検査する）。
+test: `kbb -M:physai-test`（`test-physai/enveng/physics_spec_test.cljk` が physics.edn の妥当性と全 run の計測を検査する）。
 この repo 自身の `.kotoba` test は kbb では走らない（fleet の JVM gate が走らせる）。この bot の test 数は physics の test だけを数える。
 
 ## 測って分かったこと・限界（成長の第一候補）
