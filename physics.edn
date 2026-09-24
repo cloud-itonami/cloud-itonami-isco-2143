@@ -1,0 +1,31 @@
+;; What this vertical's robot physically does, declared for
+;; kotoba.robotics.process (kotoba-lang/robotics). `kbb -M:physics` runs it.
+;;
+;; README: an ISCO 2143 Environmental Engineers actor for site assessment data
+;; and environmental engineering projects. The physical works such engineers
+;; size and check: a stormwater detention basin drawing down through its
+;; outlet orifice, and a groundwater extraction well pumping to treatment.
+;;
+;; Every number without a cited source is marked `estimate` in its :basis.
+;; Replacing an estimate with a sourced value is this bot's growth work.
+{:physics/schema "itonami.physical-ai.spec.v1"
+ :repo "cloud-itonami/cloud-itonami-isco-2143"
+ :cases
+ [{:id :detention-basin-drawdown
+   :kind :tank-drain
+   :procedure "monitoring robot logs a 500 m2 stormwater detention basin drawing down through its 0.003 m2 outlet orifice"
+   :params {:tank-area-m2 500.0 :h-target-m 0.05 :orifice-area-m2 0.003 :cd 0.62
+            :q-in-m3s 0.0 :dt-s 10.0 :max-time-s 604800.0}
+   :sweep {:param :h0-m :values [0.5 1.0 1.5 2.0 3.0]}
+   :quantity :time-to-target-s
+   :limit {:max 172800.0 :basis "estimate: 48-hour drawdown, a common design target so the basin is empty before the next storm"}
+   :boundary {:lo 0.3 :hi 3.5}}
+  {:id :extraction-well-pumping
+   :kind :pipe-flow
+   :procedure "extraction well pump lifts groundwater 15 m and pushes it through 200 m of 50 mm pipe to the treatment unit"
+   :params {:diameter-m 0.05 :length-m 200.0 :roughness-m 1.5e-6
+            :density-kg-m3 999.0 :viscosity-pa-s 1.1e-3 :pump-efficiency 0.55 :elevation-m 15.0}
+   :sweep {:param :q-m3s :values [0.0005 0.001 0.002 0.003 0.005]}
+   :quantity :pump-power-w
+   :limit {:max 750.0 :basis "estimate: a 0.75 kW submersible well pump, a common size for a single extraction well"}
+   :boundary {:lo 0.0002 :hi 0.006}}]}
