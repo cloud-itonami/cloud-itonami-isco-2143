@@ -14,7 +14,7 @@
  {
   ;; kbb -M:physics -> the physical-AI bot's measurement: runs physics.edn on
   ;; kotoba.robotics.process and prints one probe map. Exit 2 = could not measure.
-  :physai-test {:extra-paths ["test"] :main-opts ["-m" "cognitect.test-runner"]}
+  :physai-test {:extra-paths ["test" "test-physai"] :main-opts ["-m" "cognitect.test-runner"]}
   :physics {:main-opts ["-m" "kotoba.robotics.process.probe"]}
 
   ;; clj-kondo from deps (no binary), errors fail CI. Added because this repo
